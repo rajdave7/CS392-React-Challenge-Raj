@@ -1,6 +1,6 @@
 @import "tailwindcss";
 
-@theme {
+/* @theme {
   --animate-logo-spin: logo-spin infinite 20s linear;
 
   @keyframes logo-spin {
@@ -11,4 +11,4 @@
       transform: rotate(360deg);
     }
   }
-}
+} */

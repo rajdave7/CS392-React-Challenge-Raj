@@ -2,7 +2,7 @@ import Banner from "./components/Banner";
 import CourseList from "./components/CourseList";
 
 const schedule = {
-  "title": "CS Courses for 2018-2019",
+  "title": "CS Courses for 2025-2026",
   "courses": {
     "F101" : {
       "term": "Fall",
