@@ -22,6 +22,14 @@ const App = () => {
   );
 
   const [selectedTerm, setSelectedTerm] = useState<Term>("Fall");
+  const [selectedCourses, setSelectedCourses] = useState<string[]>([]);
+
+  const toggleCourse = (id: string) => {
+    setSelectedCourses((prev) =>
+      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]
+    );
+  };  
+
   if (error) return <h1>Error loading course data: {`${error}`}</h1>;
   if (isLoading) return <h1>Loading course data...</h1>;
   if (!json) return <h1>No course data found</h1>;
@@ -33,7 +41,15 @@ const App = () => {
       <Banner title={schedule.title} />
       <TermFilter term={selectedTerm} setTerm={setSelectedTerm} />
 
-      <CourseList courses={filteredSchedule} />
+      <div className="text-center my-2">
+        <small>{selectedCourses.length} selected</small>
+      </div>
+
+      <CourseList
+        courses={filteredSchedule}
+        selected={selectedCourses}
+        toggleSelected={toggleCourse}
+      />
     </>
   );
 };
