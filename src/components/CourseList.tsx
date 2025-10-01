@@ -1,3 +1,5 @@
+import { isOverlapping } from "../utilities/timeUtils";
+
 export interface Course {
   term: string;
   meets: string;
@@ -10,15 +12,15 @@ export interface CourseListProps {
   selected: string[];
   toggleSelected: (id: string) => void;
   allCoursesMap: Record<string, Course>;
+  onEdit: (id: string) => void;
 }
-
-import { isOverlapping } from "../utilities/timeUtils";
 
 const CourseList = ({
   courses,
   selected,
   toggleSelected,
   allCoursesMap,
+  onEdit,
 }: CourseListProps) => {
   return (
     <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 md:grid-cols-4 p-4 m-4">
@@ -68,9 +70,25 @@ const CourseList = ({
             <div className="border-t border-gray-200 mb-2"></div>
             <div className="text-l text-gray-600 flex items-center justify-between">
               <span>{course.meets}</span>
-              {disabled ? (
-                <span className="text-red-500 font-bold">time conflict</span>
-              ) : null}
+              <div
+                className="flex items-center gap-2"
+                onClick={(e) => e.stopPropagation()}
+              >
+                {disabled ? (
+                  <span className="text-red-500 font-bold">
+                    time conflict
+                  </span>
+                ) : null}
+                <button
+                  type="button"
+                  disabled={disabled}
+                  onClick={() => onEdit(id)}
+                  className="text-sm underline"
+                  aria-label={`Edit ${course.title}`}
+                >
+                  Edit
+                </button>
+              </div>
             </div>
           </div>
         );

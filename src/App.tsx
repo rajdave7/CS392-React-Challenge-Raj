@@ -4,6 +4,7 @@ import { useJsonQuery } from "./utilities/fetch";
 import TermFilter, { type Term } from "./components/TermFilter";
 import Modal from "./components/Modal";
 import { useState } from "react";
+import CourseForm from "./components/CourseForm";
 
 interface Course {
   term: string;
@@ -33,6 +34,18 @@ const App = () => {
 
   const [planOpen, setPlanOpen] = useState(false);
 
+  const [editOpen, setEditOpen] = useState(false);
+  const [editingCourseId, setEditingCourseId] = useState<string | null>(null);
+
+  const openEdit = (id: string) => {
+    setEditingCourseId(id);
+    setEditOpen(true);
+  };
+  const closeEdit = () => {
+    setEditingCourseId(null);
+    setEditOpen(false);
+  };
+
   if (error) return <h1>Error loading course data: {`${error}`}</h1>;
   if (isLoading) return <h1>Loading course data...</h1>;
   if (!json) return <h1>No course data found</h1>;
@@ -45,6 +58,10 @@ const App = () => {
   const selectedCourseObjects = allCourses.filter((c) =>
     selectedCourses.includes(`${c.term}-${c.number}`)
   );
+
+  const editingCourse = editingCourseId
+    ? allCoursesMap[editingCourseId] ?? null
+    : null;
 
   return (
     <>
@@ -75,6 +92,7 @@ const App = () => {
         selected={selectedCourses}
         toggleSelected={toggleCourse}
         allCoursesMap={allCoursesMap}
+        onEdit={openEdit}
       />
 
       <Modal isOpen={planOpen} onClose={() => setPlanOpen(false)}>
@@ -113,6 +131,10 @@ const App = () => {
             </button>
           </div>
         </div>
+      </Modal>
+
+      <Modal isOpen={editOpen} onClose={closeEdit}>
+        <CourseForm course={editingCourse} onClose={closeEdit} />
       </Modal>
     </>
   );
