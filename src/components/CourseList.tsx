@@ -1,22 +1,32 @@
-interface Course {
+export interface Course {
   term: string;
   meets: string;
   title: string;
   number: string;
 }
 
-interface CourseListProps {
+export interface CourseListProps {
   courses: Course[];
-  selected: string[]; 
+  selected: string[];
   toggleSelected: (id: string) => void;
+  allCoursesMap: Record<string, Course>;
 }
 
-const CourseList = ({ courses, selected, toggleSelected }: CourseListProps) => {
+import { isOverlapping } from "../utilities/timeUtils";
+
+const CourseList = ({
+  courses,
+  selected,
+  toggleSelected,
+  allCoursesMap,
+}: CourseListProps) => {
   return (
     <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 md:grid-cols-4 p-4 m-4">
       {courses.map((course) => {
         const id = `${course.term}-${course.number}`;
         const isSelected = selected.includes(id);
+        const isConflicting = isOverlapping(allCoursesMap, selected, id);
+        const disabled = isConflicting && !isSelected;
 
         const cardClasses = [
           "border-2",
@@ -29,6 +39,7 @@ const CourseList = ({ courses, selected, toggleSelected }: CourseListProps) => {
           isSelected
             ? "bg-blue-50 border-blue-400"
             : "bg-white border-gray-200",
+          disabled ? "opacity-50 cursor-not-allowed" : "",
         ].join(" ");
 
         return (
@@ -38,9 +49,12 @@ const CourseList = ({ courses, selected, toggleSelected }: CourseListProps) => {
             role="button"
             tabIndex={0}
             aria-pressed={isSelected}
-            onClick={() => toggleSelected(id)}
+            aria-disabled={disabled}
+            onClick={() => {
+              if (!disabled) toggleSelected(id);
+            }}
             onKeyDown={(e) => {
-              if (e.key === "Enter" || e.key === " ") {
+              if ((e.key === "Enter" || e.key === " ") && !disabled) {
                 e.preventDefault();
                 toggleSelected(id);
               }
@@ -52,7 +66,12 @@ const CourseList = ({ courses, selected, toggleSelected }: CourseListProps) => {
 
             <div className="text-l font-medium mb-2 h-16">{course.title}</div>
             <div className="border-t border-gray-200 mb-2"></div>
-            <div className="text-l text-gray-600">{course.meets}</div>
+            <div className="text-l text-gray-600 flex items-center justify-between">
+              <span>{course.meets}</span>
+              {disabled ? (
+                <span className="text-red-500 font-bold">time conflict</span>
+              ) : null}
+            </div>
           </div>
         );
       })}

@@ -38,6 +38,9 @@ const App = () => {
   if (!json) return <h1>No course data found</h1>;
   const schedule = json as CourseListProps;
   const allCourses: Course[] = Object.values(schedule.courses || {});
+  const allCoursesMap: Record<string, Course> = Object.fromEntries(
+    allCourses.map((c) => [`${c.term}-${c.number}`, c])
+  );
   const filteredSchedule = allCourses.filter((c) => c.term === selectedTerm);
   const selectedCourseObjects = allCourses.filter((c) =>
     selectedCourses.includes(`${c.term}-${c.number}`)
@@ -71,6 +74,7 @@ const App = () => {
         courses={filteredSchedule}
         selected={selectedCourses}
         toggleSelected={toggleCourse}
+        allCoursesMap={allCoursesMap}
       />
 
       <Modal isOpen={planOpen} onClose={() => setPlanOpen(false)}>
