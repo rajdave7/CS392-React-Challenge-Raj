@@ -1,4 +1,3 @@
-
 import { useEffect, useState } from "react";
 import type { Course } from "./CourseList";
 import { z } from "zod";
@@ -8,63 +7,80 @@ export interface CourseFormProps {
   onClose: () => void;
 }
 
+const DAY_TOKEN_RE = /(Tu|Th|Sa|Su|M|W|F)/g;
 
-export const courseSchema = z.object({
+const MEETS_FULL_RE =
+  /^((?:(?:Tu|Th|Sa|Su|M|W|F))+)\s+(\d{1,2}:\d{2})-(\d{1,2}:\d{2})$/;
+
+function tokenizeDays(dayStr: string): string[] | null {
+  // Extract tokens using DAY_TOKEN_RE and ensure they concatenate back to the same string.
+  DAY_TOKEN_RE.lastIndex = 0;
+  const toks: string[] = [];
+  let m: RegExpExecArray | null;
+  while ((m = DAY_TOKEN_RE.exec(dayStr)) !== null) {
+    toks.push(m[0]);
+  }
+  if (toks.length === 0) return null;
+  if (toks.join("") !== dayStr) return null;
+  if (new Set(toks).size !== toks.length) return null;
+  return toks;
+}
+
+function minutesFromHM(hm: string): number | null {
+  const parts = hm.split(":");
+  if (parts.length !== 2) return null;
+  const h = Number(parts[0]);
+  const m = Number(parts[1]);
+  if (!Number.isFinite(h) || !Number.isFinite(m)) return null;
+  if (h < 0 || h > 23 || m < 0 || m > 59) return null;
+  return h * 60 + m;
+}
+
+const TERM = z.enum(["Fall", "Winter", "Spring", "Summer"] as const);
+
+const baseCourseSchema = z.object({
   title: z
     .string()
-    .min(2, { message: "Title must be at least 2 characters (e.g., 'AI')." })
-    .trim(),
-  term: z.enum(["Fall", "Winter", "Spring", "Summer"], {
-    errorMap: () => ({
-      message: "Term must be one of: Fall, Winter, Spring, Summer.",
-    }),
-  }),
-  number: z.string().regex(/^\d+(?:-\d+)?$/, {
-    message:
-      "Course number must be digits with optional '-section', e.g., '213' or '213-2'.",
-  }),
-  meets: z
+    .trim()
+    .min(2, { message: "Title must be at least 2 characters (e.g., 'AI')." }),
+  term: TERM,
+  number: z
     .string()
-    .refine((s) => s.trim().length === 0 || true, {
-      message: "Invalid meets format.",
-    }) // placeholder to keep union below narrow in editor
-    .transform((s) => s.trim()),
+    .trim()
+    .regex(/^\d+(?:-\d+)?$/, {
+      message:
+        "Course number must be digits with optional '-section', e.g., '213' or '213-2'.",
+    }),
 });
 
-
-const meetsPattern = /^([MTWRFSU]+)\s+(\d{1,2}:\d{2})-(\d{1,2}:\d{2})$/;
-
+// meets: either empty string OR valid meeting spec
 const meetsSchema = z.union([
   z.literal("").transform(() => ""),
   z
     .string()
-    .regex(meetsPattern, {
-      message:
-        "Must contain days and start-end times, e.g., 'MWF 12:00-13:20'. Days: M T W R F S U.",
-    })
-    .refine((s) => {
-      const m = s.match(meetsPattern);
-      if (!m) return false;
-      const [, days, startStr, endStr] = m;
-      if (!/^[MTWRFSU]+$/.test(days)) return false;
+    .trim()
+    .refine(
+      (s) => {
+        const m = s.match(MEETS_FULL_RE);
+        if (!m) return false;
+        const [, daysStr, startStr, endStr] = m;
+        // tokenize and verify tokens are valid and cover entire daysStr
+        const toks = tokenizeDays(daysStr);
+        if (!toks) return false;
 
-      const toMinutes = (t: string) => {
-        const [hStr, mStr] = t.split(":");
-        const h = Number(hStr);
-        const mm = Number(mStr);
-        if (Number.isNaN(h) || Number.isNaN(mm)) return NaN;
-        if (h < 0 || h > 23 || mm < 0 || mm > 59) return NaN;
-        return h * 60 + mm;
-      };
-
-      const startMin = toMinutes(startStr);
-      const endMin = toMinutes(endStr);
-      if (Number.isNaN(startMin) || Number.isNaN(endMin)) return false;
-      return endMin > startMin;
-    }, "End time must be after start time."),
+        const startMin = minutesFromHM(startStr);
+        const endMin = minutesFromHM(endStr);
+        if (startMin === null || endMin === null) return false;
+        return endMin > startMin;
+      },
+      {
+        message:
+          "Must contain days and start-end times, e.g., 'MWF 12:00-13:20'. Days allowed: M Tu W Th F Sa Su.",
+      }
+    ),
 ]);
 
-export const fullCourseSchema = courseSchema.extend({
+export const fullCourseSchema = baseCourseSchema.extend({
   meets: meetsSchema,
 });
 
@@ -92,7 +108,6 @@ export function validateCourseData(data: {
   if (result.success) {
     return { valid: true, values: result.data };
   }
-
 
   const errors: Record<string, string> = {};
   for (const issue of result.error.issues) {
@@ -219,7 +234,7 @@ const CourseForm = ({ course, onClose }: CourseFormProps) => {
             className="w-full border rounded p-2"
             type="text"
             name="meets"
-            placeholder="e.g. MWF 9:00-9:50"
+            placeholder="e.g. MWF 9:00-9:50 or TuTh 14:00-15:20"
             aria-label="Meeting times"
             aria-invalid={!!errors.meets}
             aria-describedby={errors.meets ? "err-meets" : undefined}
