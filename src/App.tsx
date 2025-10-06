@@ -1,10 +1,11 @@
 import Banner from "./components/Banner";
 import CourseList from "./components/CourseList";
-import { useJsonQuery } from "./utilities/fetch";
+// import { useJsonQuery } from "./utilities/fetch";
 import TermFilter, { type Term } from "./components/TermFilter";
 import Modal from "./components/Modal";
 import { useState } from "react";
 import CourseForm from "./components/CourseForm";
+import { useDataQuery } from "./utilities/firebase";
 
 interface Course {
   term: string;
@@ -19,9 +20,7 @@ interface CourseListProps {
 }
 
 const App = () => {
-  const [json, isLoading, error] = useJsonQuery(
-    "https://courses.cs.northwestern.edu/394/guides/data/cs-courses.php"
-  );
+  const [json, isLoading, error] = useDataQuery("/cs-courses");
 
   const [selectedTerm, setSelectedTerm] = useState<Term>("Fall");
   const [selectedCourses, setSelectedCourses] = useState<string[]>([]);
