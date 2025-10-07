@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import type { Course } from "./CourseList";
 import { z } from "zod";
+import { getDatabase, ref, set } from "firebase/database";
 
 export interface CourseFormProps {
   course: Course | null;
@@ -13,7 +14,7 @@ const MEETS_FULL_RE =
   /^((?:(?:Tu|Th|Sa|Su|M|W|F))+)\s+(\d{1,2}:\d{2})-(\d{1,2}:\d{2})$/;
 
 function tokenizeDays(dayStr: string): string[] | null {
-  // Extract tokens using DAY_TOKEN_RE and ensure they concatenate back to the same string.
+    // Extract tokens using DAY_TOKEN_RE and ensure they concatenate back to the same string.
   DAY_TOKEN_RE.lastIndex = 0;
   const toks: string[] = [];
   let m: RegExpExecArray | null;
@@ -21,7 +22,7 @@ function tokenizeDays(dayStr: string): string[] | null {
     toks.push(m[0]);
   }
   if (toks.length === 0) return null;
-  if (toks.join("") !== dayStr) return null;
+  if (toks.join("") !== dayStr) return null; 
   if (new Set(toks).size !== toks.length) return null;
   return toks;
 }
@@ -53,7 +54,6 @@ const baseCourseSchema = z.object({
     }),
 });
 
-// meets: either empty string OR valid meeting spec
 const meetsSchema = z.union([
   z.literal("").transform(() => ""),
   z
@@ -64,10 +64,8 @@ const meetsSchema = z.union([
         const m = s.match(MEETS_FULL_RE);
         if (!m) return false;
         const [, daysStr, startStr, endStr] = m;
-        // tokenize and verify tokens are valid and cover entire daysStr
         const toks = tokenizeDays(daysStr);
         if (!toks) return false;
-
         const startMin = minutesFromHM(startStr);
         const endMin = minutesFromHM(endStr);
         if (startMin === null || endMin === null) return false;
@@ -123,7 +121,6 @@ export function validateCourseData(data: {
   return { valid: false, errors };
 }
 
-/* -------------------- CourseForm component (UI) -------------------- */
 
 const CourseForm = ({ course, onClose }: CourseFormProps) => {
   const [title, setTitle] = useState("");
@@ -133,6 +130,7 @@ const CourseForm = ({ course, onClose }: CourseFormProps) => {
   >("Fall");
   const [number, setNumber] = useState("");
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
     setTitle(course?.title ?? "");
@@ -142,7 +140,7 @@ const CourseForm = ({ course, onClose }: CourseFormProps) => {
     setErrors({});
   }, [course]);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     const input = {
       title: title.trim(),
@@ -157,13 +155,54 @@ const CourseForm = ({ course, onClose }: CourseFormProps) => {
       return;
     }
 
+    // Check for no changes (compare to original course)
+    const original = course ?? { title: "", term: "", number: "", meets: "" };
+    const changed =
+      original.title !== result.values!.title ||
+      original.term !== result.values!.term ||
+      original.number !== result.values!.number ||
+      original.meets !== result.values!.meets;
+
+    if (!changed) {
+      setErrors({ _global: "No changes to save." });
+      return;
+    }
+
+    // build id and data to save
+    const id = `${result.values!.term}-${result.values!.number}`;
+    const dataToSave = {
+      term: result.values!.term,
+      meets: result.values!.meets,
+      title: result.values!.title,
+      number: result.values!.number,
+    };
+
     setErrors({});
-    onClose();
+    setIsSubmitting(true);
+    try {
+      // write to /cs-courses/courses/<id>
+      const db = getDatabase();
+      await set(ref(db, `cs-courses/courses/${id}`), dataToSave);
+
+      // success: close the form
+      onClose();
+    } catch (err) {
+      setErrors({ _global: `Save failed: ${String(err)}` });
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
     <div className="p-4">
-      <h2 className="text-xl font-bold mb-4">Edit Course</h2>
+      <h2 className="text-xl font-bold mb-4">
+        {course ? "Edit Course" : "New Course"}
+      </h2>
+
+      {errors._global ? (
+        <div className="mb-3 text-sm text-red-600">{errors._global}</div>
+      ) : null}
+
       <form onSubmit={handleSubmit} noValidate>
         <div className="mb-2">
           <label className="block text-sm font-medium">Title</label>
@@ -176,6 +215,7 @@ const CourseForm = ({ course, onClose }: CourseFormProps) => {
             aria-label="Course title"
             aria-invalid={!!errors.title}
             aria-describedby={errors.title ? "err-title" : undefined}
+            disabled={isSubmitting}
           />
           {errors.title ? (
             <div id="err-title" className="text-sm text-red-600 mt-1">
@@ -193,6 +233,7 @@ const CourseForm = ({ course, onClose }: CourseFormProps) => {
             aria-label="Term"
             aria-invalid={!!errors.term}
             aria-describedby={errors.term ? "err-term" : undefined}
+            disabled={isSubmitting}
           >
             <option>Fall</option>
             <option>Winter</option>
@@ -218,6 +259,7 @@ const CourseForm = ({ course, onClose }: CourseFormProps) => {
             placeholder="e.g. 213 or 213-2"
             aria-invalid={!!errors.number}
             aria-describedby={errors.number ? "err-number" : undefined}
+            disabled={isSubmitting}
           />
           {errors.number ? (
             <div id="err-number" className="text-sm text-red-600 mt-1">
@@ -238,6 +280,7 @@ const CourseForm = ({ course, onClose }: CourseFormProps) => {
             aria-label="Meeting times"
             aria-invalid={!!errors.meets}
             aria-describedby={errors.meets ? "err-meets" : undefined}
+            disabled={isSubmitting}
           />
           {errors.meets ? (
             <div id="err-meets" className="text-sm text-red-600 mt-1">
@@ -255,11 +298,17 @@ const CourseForm = ({ course, onClose }: CourseFormProps) => {
             type="button"
             className="btn btn-secondary px-4 py-2"
             onClick={onClose}
+            disabled={isSubmitting}
           >
             Cancel
           </button>
-          <button type="submit" className="btn btn-primary px-4 py-2">
-            Save
+          <button
+            type="submit"
+            className="btn btn-primary px-4 py-2"
+            disabled={isSubmitting}
+            aria-disabled={isSubmitting}
+          >
+            {isSubmitting ? "Saving..." : "Save"}
           </button>
         </div>
       </form>
