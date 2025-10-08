@@ -1,4 +1,5 @@
 import { isOverlapping } from "../utilities/timeUtils";
+import { useAuthState } from "../utilities/firebase";
 
 export interface Course {
   term: string;
@@ -22,6 +23,7 @@ const CourseList = ({
   allCoursesMap,
   onEdit,
 }: CourseListProps) => {
+  const { isAuthenticated } = useAuthState();
   return (
     <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 md:grid-cols-4 p-4 m-4">
       {courses.map((course) => {
@@ -75,19 +77,20 @@ const CourseList = ({
                 onClick={(e) => e.stopPropagation()}
               >
                 {disabled ? (
-                  <span className="text-red-500 font-bold">
-                    time conflict
-                  </span>
+                  <span className="text-red-500 font-bold">time conflict</span>
                 ) : null}
-                <button
-                  type="button"
-                  disabled={disabled}
-                  onClick={() => onEdit(id)}
-                  className="text-sm underline"
-                  aria-label={`Edit ${course.title}`}
-                >
-                  Edit
-                </button>
+
+                {isAuthenticated ? (
+                  <button
+                    type="button"
+                    disabled={disabled}
+                    onClick={() => onEdit(id)}
+                    className="text-sm underline"
+                    aria-label={`Edit ${course.title}`}
+                  >
+                    Edit
+                  </button>
+                ) : null}
               </div>
             </div>
           </div>
