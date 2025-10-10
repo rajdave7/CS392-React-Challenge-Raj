@@ -1,5 +1,5 @@
 import { isOverlapping } from "../utilities/timeUtils";
-import { useAuthState } from "../utilities/firebase";
+import { useProfile } from "../utilities/profile";
 
 export interface Course {
   term: string;
@@ -23,7 +23,10 @@ const CourseList = ({
   allCoursesMap,
   onEdit,
 }: CourseListProps) => {
-  const { isAuthenticated } = useAuthState();
+  // get profile (includes isAdmin flag)
+  const [profile] = useProfile();
+  const isAdmin = profile?.isAdmin ?? false;
+
   return (
     <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 md:grid-cols-4 p-4 m-4">
       {courses.map((course) => {
@@ -80,7 +83,7 @@ const CourseList = ({
                   <span className="text-red-500 font-bold">time conflict</span>
                 ) : null}
 
-                {isAuthenticated ? (
+                {isAdmin ? (
                   <button
                     type="button"
                     disabled={disabled}
