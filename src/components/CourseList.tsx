@@ -53,6 +53,7 @@ const CourseList = ({
           <div
             key={id}
             className={cardClasses}
+            data-cy="course"
             role="button"
             tabIndex={0}
             aria-pressed={isSelected}

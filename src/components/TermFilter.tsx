@@ -23,7 +23,7 @@ const TermFilter = ({ term, setTerm }: TermFilterProps) => {
             checked={t === term}
             onChange={() => setTerm(t)}
           />
-          <label htmlFor={`term-${t}`} className={`btn btn-success mb-1 p-2`}>
+          <label htmlFor={`term-${t}`} data-cy={`${t}`} className={`btn btn-success mb-1 p-2`}>
             {t}
           </label>
         </div>

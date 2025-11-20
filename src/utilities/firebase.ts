@@ -1,7 +1,7 @@
 // src/utilities/firebase.ts
 import { useEffect, useState } from "react";
 import { initializeApp } from "firebase/app";
-import { getDatabase, onValue, ref } from "firebase/database";
+import { connectDatabaseEmulator, getDatabase, onValue, ref } from "firebase/database";
 import {
   getAuth,
   GoogleAuthProvider,
@@ -10,6 +10,8 @@ import {
   onAuthStateChanged,
   type NextOrObserver,
   type User,
+  connectAuthEmulator,
+  signInWithCredential,
 } from "firebase/auth";
 
 const firebaseConfig = {
@@ -26,15 +28,28 @@ const firebaseConfig = {
 // Initialize Firebase
 const firebase = initializeApp(firebaseConfig);
 export const database = getDatabase(firebase);
-
-
 const auth = getAuth(firebase);
 const googleProvider = new GoogleAuthProvider();
 
+// Connect to emulators IMMEDIATELY after initialization, BEFORE any auth operations
+if (!globalThis.EMULATION && import.meta.env.MODE === 'development') {
+  console.log("Connecting to emulators...");
+  connectAuthEmulator(auth, "http://127.0.0.1:9099");
+  connectDatabaseEmulator(database, "127.0.0.1", 9000);
+  console.log("Connected to emulators");
+  
+  globalThis.EMULATION = true;
+  
+  // Sign in AFTER connecting to emulator
+  signInWithCredential(auth, GoogleAuthProvider.credential(
+    '{"sub": "mXVC3pVY6X9Zy3qrwxQGuwiog0EH", "email": "tester@gmail.com", "displayName":"Test User", "email_verified": true}'
+  )).catch(err => {
+    console.error("Failed to sign in with test credential:", err);
+  });
+}
 
 export const signInWithGoogle = () => signInWithPopup(auth, googleProvider);
 export const signOut = () => firebaseSignOut(auth);
-
 
 export const addAuthStateListener = (fn: NextOrObserver<User | null>) =>
   onAuthStateChanged(auth, fn);
@@ -71,10 +86,13 @@ export const useDataQuery = (
     const unsubscribe = onValue(
       nodeRef,
       (snapshot) => {
-        setData(snapshot.val());
+        const val = snapshot.val();
+        console.log(`📊 Data received for ${path}:`, val);
+        setData(val);
         setLoading(false);
       },
       (err) => {
+        console.error(`❌ Error loading ${path}:`, err);
         setError(err as Error);
         setLoading(false);
       }

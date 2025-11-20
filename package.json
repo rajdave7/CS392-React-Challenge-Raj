@@ -4,6 +4,7 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
+    "start": "npm run dev",
     "dev": "vite",
     "build": "tsc -b && vite build",
     "lint": "eslint .",
@@ -11,7 +12,10 @@
     "test": "vitest --ui",
     "coverage": "vitest run --coverage",
     "deploy": "npm run build && firebase deploy",
-    "cy:open": "cypress open"
+    "cy:open": "cypress open",
+    "em:start": "firebase emulators:start --import=./saved-data --export-on-exit",
+    "em:exec": "firebase emulators:exec --import=./saved-data \"npm start\"",
+    "em:execui": "firebase emulators:exec --ui --import=./saved-data 'npm start'"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.2.2",
